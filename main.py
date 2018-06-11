@@ -46,7 +46,7 @@ if det_file is not None:
 	throughput = throughput[mask]
 
 # Part 1: Compute the apparent photon flux of the source vs. wavelength and time in each "micro" bin, in units of phot/s/cm^2
-def compute_apparent_flux(x):
+def compute_apparent_flux(x,t):
 	# STEP 1: Generate a spectrum for the target (erg/s/cm^2/sr/nm)
 	if star_file is None:
 		y = generate_planck_blackbody(x,T_eff)
@@ -69,9 +69,9 @@ def compute_apparent_flux(x):
 	y = (y[None,:]/e_phot)[0]
 	y *= dx*wl_unit
 
-	return t,y.to(u.photon/u.s/u.cm**2),LC_m
+	return y.to(u.photon/u.s/u.cm**2),LC_m
 	
-t,y_physical,LC_m = compute_apparent_flux(x)
+y_physical,LC_m = compute_apparent_flux(x,t)
 
 # Part 2: Compute the ADU spectrum recorded by a single telescope unit in a single exposure, in units of e-
 def expose_single_unit(t,x,y_in):
