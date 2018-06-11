@@ -94,7 +94,7 @@ period_hz_in=np.array([0.,0.,0.,0.,0.,0.,0,0.]) # Array stores the orbital perio
 period_hz_out=np.array([0.,0.,0.,0.,0.,0.,0,0.])
 
 # Assumptions about planet occurrence rates: only considering earth-sized planets here:
-eta_earth=[0.3,0.3,0.3,0.3,0.3,0.6,1.5,0.2]
+eta_earth=[0.1,0.2,0.3,0.3,0.3,0.6,1.5,0.2]
 
 transit_prob_out=np.array([0.,0.,0.,0.,0.,0.,0,0.])
 transit_prob_in = np.array([0.,0.,0.,0.,0.,0.,0,0.])
@@ -124,7 +124,7 @@ while i <= 7: # Calculate HZ boundaries and periods for sp types
           transit_prob_out[i] = ( Rstar[i]*const.R_sun.value)/(rout[i]* const.au.value)
 
           print "-----------"
-          print sptype[i],period_hz_in[i], period_hz_out[i]
+          print sptype[i],period_hz_in[i], period_hz_out[i], 'days'
           print 'Transit probabilities', transit_prob_in[i], transit_prob_out[i]
           if msgs ==1:
               print "Teff", teff[i], "Lum", 10**loglum[i]
@@ -184,7 +184,8 @@ fiftyfifty_dist=distance[find_nearest(fiftyfifty,TargetSampleSize)]
 fgkplanets_dist=distance[find_nearest(fgkplanets,TargetSampleSize)]
 sunlike_dist=distance[find_nearest(numtr[4,],TargetSampleSize)]
 
-print 'Distances:', mplanets_dist, fiftyfifty_dist, fgkplanets_dist
+print 'Distances:', mplanets_dist, fiftyfifty_dist, fgkplanets_dist,sunlike_dist
+
 
 #= Create plots
 plt.figure(1)
@@ -263,5 +264,74 @@ plt.text(distance[120]+8, absdepth[5,120], sptype[5])
 plt.text(distance[170]+2, absdepth[4,170], sptype[4])
 plt.text(distance[340]+10, absdepth[3,340], sptype[3])
 
-
 plt.show()
+
+
+# Write out the compositions of the four samples for the concept paper:
+#   \caption{Properties of possible target samples. \label{T:TargetSample}}
+#   \tablehead{\colhead{Sample}&\colhead{\#M}&\colhead{\#K}&\colhead{\#G} &
+#   \colhead{\#F}  & \colhead{Max. Dist. [pc]} & \colhead{V-mag range} & \colhead{I-mag range}& \colhead{HZE Period [day]} }
+# ======================
+
+#Sample 1
+print 'Sample 1 - M star planets only'
+print 'Max Distance:', mplanets_dist, 'pc'
+print 'M dwarf planets:', TargetSampleSize
+print 'K dwarf planets:', 0.
+print 'G dwarf planets:', 0.
+print 'F dwarf planets:', 0.
+print 'V-band apparent magnitude of faintest target'
+print 'I-band apparent magnitude of faintest target', apparentmag[6,int(mplanets_dist-1)]
+print 'HZ Periods:', sptype[6],period_hz_in[6], period_hz_out[6], 'days'
+
+print
+print
+
+#Sample 2
+print 'Sample 2 - 50% M star planets and 50% FGK star planets'
+print 'Max Distance:', fiftyfifty_dist, 'pc'
+print 'M dwarf planets:', TargetSampleSize/2.
+print 'K dwarf planets:', round(numtr[5,int(fiftyfifty_dist-1)])
+print 'G dwarf planets:', round(numtr[4,int(fiftyfifty_dist-1)])
+print 'F dwarf planets:', round(numtr[3,int(fiftyfifty_dist-1)])
+print 'V-band apparent magnitude of faintest target'
+print 'I-band apparent magnitude of faintest M dwarf', apparentmag[6,fifty_mswitch_idx-1]
+print 'I-band apparent magnitude of faintest K dwarf', apparentmag[5,int(fiftyfifty_dist-1)]
+print 'I-band apparent magnitude of faintest G dwarf', apparentmag[4,int(fiftyfifty_dist-1)]
+print 'I-band apparent magnitude of faintest F dwarf', apparentmag[3,int(fiftyfifty_dist-1)]
+print
+print
+print 'HZ Periods:', sptype[6],period_hz_in[6], period_hz_out[6], 'days'
+print 'HZ Periods:', sptype[5],period_hz_in[5], period_hz_out[5], 'days'
+print 'HZ Periods:', sptype[4],period_hz_in[4], period_hz_out[4], 'days'
+print 'HZ Periods:', sptype[3],period_hz_in[3], period_hz_out[3], 'days'
+
+#Sample 3
+print 'Sample 3 - Closest FGK star planets'
+print 'Max Distance:', fgkplanets_dist, ' pc'
+print 'M dwarf planets:', 0
+print 'K dwarf planets:', round(numtr[5,int(fgkplanets_dist-1)])
+print 'G dwarf planets:', round(numtr[4,int(fgkplanets_dist-1)])
+print 'F dwarf planets:', round(numtr[3,int(fgkplanets_dist-1)])
+print 'V-band apparent magnitude of faintest target', apparentmag[sp,di]
+print 'I-band apparent magnitude of faintest target', apparentmag[sp,di]
+print 'I-band apparent magnitude of faintest K dwarf', apparentmag[5,int(fgkplanets_dist-1)]
+print 'I-band apparent magnitude of faintest G dwarf', apparentmag[4,int(fgkplanets_dist-1)]
+print 'I-band apparent magnitude of faintest F dwarf', apparentmag[3,int(fgkplanets_dist-1)]
+print 'HZ Periods:', sptype[5],period_hz_in[5], period_hz_out[5], 'days'
+print 'HZ Periods:', sptype[4],period_hz_in[4], period_hz_out[4], 'days'
+print 'HZ Periods:', sptype[3],period_hz_in[3], period_hz_out[3], 'days'
+print
+print
+
+#Sample 4
+print 'Sample 4 - G star planets only'
+print 'Max Distance:', sunlike_dist, ' pc'
+print 'M dwarf planets:',0
+print 'K dwarf planets:',0
+print 'G dwarf planets:', TargetSampleSize
+print 'F dwarf planets:',0
+print 'V-band apparent magnitude of faintest target'
+print 'I-band apparent magnitude of faintest target'
+print 'I-band apparent magnitude of faintest G dwarf', apparentmag[4,int(sunlike_dist-1)]
+print 'HZ Periods:', sptype[4],period_hz_in[4], period_hz_out[4], 'days'
