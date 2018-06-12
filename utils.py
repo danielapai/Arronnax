@@ -59,24 +59,40 @@ def interpolate_model(model_file,x):
 
 def read_params(params_file):
 	# Read the params file into a dictionary
-	key,val = np.loadtxt(params_file,unpack=True,dtype=str)
-
+	with open(params_file,'r') as f:
+		lines = f.readlines()
+		
+	# Loop through the lines; look for ! flags to start a new level in the dictionary
+	flag = None
 	p = {}
-	for i in range(len(key)):
-		# Determine the data type
-		if val[i].strip().lower()=='none': # Is it None?
-			p[key[i]] = None
-		elif '_' in val[i]: # Odd exception for some numeric strings with underscores in them
-			p[key[i]] = val[i]
+	for line in lines:
+		if '!' in line:
+			flag = line.replace('(','').replace(')','').split('!')[1].strip()
+			p[flag] = {}
+			continue
+		elif flag is None or line.strip() == '' or line.strip()[0] == '#':
+			continue
+			
+		key,unit,val = line.split('#')[0].strip().split()
+		
+		# Determine if val is a float, int, string, or None
+		if val.lower()=='none':
+			p[flag][key] = None
+		elif '_' in val: # Odd exception for some numeric strings with underscores in them
+			p[flag][key] = val
 		else:	
 			try:
-				p[key[i]] = int(val[i]) # Is it an integer?
+				p[flag][key] = int(val) # Is it an integer?
 			except ValueError:
 				try:
-					p[key[i]] = float(val[i]) # Is it a float?
+					p[flag][key] = float(val) # Is it a float?
 				except ValueError: 
-					p[key[i]] = val[i] # Otherwise it's a string
-	
+					p[flag][key] = val # Otherwise it's a string
+		
+		# If a unit is specified, apply the unit
+		if unit.lower() not in ['-','none']:
+			p[flag][key] = p[flag][key]*u.Unit(unit)
+		
 	return p
 
 def rebin_array(x,factor,axis):

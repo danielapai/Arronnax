@@ -1,0 +1,27 @@
+# Parameter	Unit	Value
+
+# Planet parameters (!planet)
+planet_name	-		Earth		# Name for the transmission spectrum model in the models/planet directory
+a		AU		1.0		# Semi-major axis
+
+# Star parameters (!star)
+star_name	-		Proxima		# Name for the stellar spectrum model in the models/star directory; leave as None for a blackbody
+R_st		Rsun		1.0		# Stellar radius in solar units
+M_st		Msun		1.0		# Stellar mass in solar units
+T_eff		K		5800.		# Effective temperature in K
+d		pc		10.		# Distance in pc
+
+# Telescope and detector (!telescope)
+det_name	-		300_1400	# Name of the throughput model in the models/detector directory; leave as None to use the constant value below
+throughput	-		0.8		# Combined throughput of the telescope+detector (this is only used if det_name is None)
+D		m		5.		# Aperture diameter of a single unit
+N_units		-		100		# Number of units in the array
+px_scale	arcsec		0.1		# Pixel scale in arcsec/px
+gain		electron/ph	1.5		# Gain in e-/photon
+read_noise	electron	5		# Read noise in e-
+R		-		1000		# Spectral resolution
+
+# Observing strategy (!observing)
+N_exp		-		600		# Number of exposures per transit observation
+t_exp		s		120		# Exposure time
+binning		nm		50		# Binning

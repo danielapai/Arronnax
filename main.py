@@ -11,60 +11,44 @@ t_unit = u.day
 
 # Read in the parameters file
 p = read_params('params')
-
-# Unpack and apply units
-planet_file = p['planet_name']+'.planet'
-star_file = None if p['star_name'] is None else p['star_name']+'.star'
-det_file = None if p['det_name'] is None else p['det_name']+'.detector'
-a = p['a']*u.AU
-R_st = p['R_st']*u.Rsun
-M_st = p['M_st']*u.Msun
-T_eff = p['T_eff']*u.K
-d = p['d']*u.pc 
-D = p['D']*u.m
-N_units = p['N_units']
-px_scale = p['px_scale']*u.arcsecond/u.pixel
-gain = p['gain']*u.electron/u.photon
-read_noise = p['read_noise']*u.electron
-throughput = p['throughput']
-R = p['R']
-N_exp = p['N_exp']
-t_exp = p['t_exp']*u.s
-binning = p['binning']*u.nm
+pl = p['planet']
+st = p['star']
+tl = p['telescope']
+ob = p['observing']
 
 # Generate the wavelength and time grids
 x = np.arange(xmin,xmax,dx,dtype=float)*wl_unit
-te = t_exp.to(t_unit).value
-t = np.arange(0,N_exp*te,te)*t_unit
+te = ob['t_exp'].to(t_unit).value
+t = np.arange(0,ob['N_exp']*te,te)*t_unit
 
 # If a detector model is specified, interpolate onto the wavelength grid
-if det_file is not None:
-	throughput = interpolate_model(models_dir+'/detector/'+det_file,x)
+if tl['det_name'] is not None:
+	tl['throughput'] = interpolate_model(models_dir+'/detector/'+tl['det_name']+'.detector',x)
 	# Remove all wavelengths where throughput < 1%
-	mask = throughput > 0.01
+	mask = tl['throughput'] > 0.01
 	x = x[mask]
-	throughput = throughput[mask]
+	tl['throughput'] = tl['throughput'][mask]
 
 # Part 1: Compute the apparent photon flux of the source vs. wavelength and time in each "micro" bin, in units of phot/s/cm^2
 def compute_apparent_flux(x,t):
 	# STEP 1: Generate a spectrum for the target (erg/s/cm^2/sr/nm)
-	if star_file is None:
-		y = generate_planck_blackbody(x,T_eff)
+	if st['star_name'] is None:
+		y = generate_planck_blackbody(x,st['T_eff'])
 	else:
-		y = read_PHOENIX_spectrum(star_file,x)
+		y = read_PHOENIX_spectrum(st['star_name']+'.star',x)
 	
 	# STEP 2: Read in the atmosphere+stellar contamination models (RpRs vs wavelength)
-	RpRs_m = get_atmosphere_model(planet_file,x,R_st)
+	RpRs_m = get_atmosphere_model(pl['planet_name']+'.planet',x,st['R_st'])
 	eps = get_contamination_model(None,x)
 	RpRs_m *= eps.value
 
 	# STEP 3: Build the normalized transit light curves for each wavelength; multiply the stellar spectrum by this model
-	params = base_transit_params(t0=np.ptp(t)/2.,M_st=M_st,R_st=R_st,per=365.25*u.day)
+	params = base_transit_params(t0=np.ptp(t)/2.,M_st=st['M_st'],R_st=st['R_st'],per=365.25*u.day)
 	LC_m = generate_transit_models(RpRs_m,params,t)
 	y = y[None,:]*LC_m
 	
 	# STEP 4: Integrate over the solid angle of the star and calculate the photon flux, then the photon flux in each bin
-	y *= (np.pi*R_st**2/d**2)*u.sr
+	y *= (np.pi*st['R_st']**2/st['d']**2)*u.sr
 	e_phot = (ct.h*ct.c/x).to(u.erg)/u.photon
 	y = (y[None,:]/e_phot)[0]
 	y *= dx*wl_unit
@@ -79,21 +63,21 @@ def expose_single_unit(t,x,y_in):
 	y = np.copy(y_in)*y_in.unit
 
 	# STEP 1: Multiply the incident flux by the objective area and detector QE
-	y *= np.pi*(D/2.)**2
-	y *= throughput
+	y *= np.pi*(tl['D']/2.)**2
+	y *= tl['throughput']
 	
 	# STEP 2: Multiply by exposure time
-	y *= t_exp
+	y *= ob['t_exp']
 	
 	# STEP 3: Apply photon noise (carry over the units)
 	y = np.random.normal(y,scale=y**0.5)*y.unit
 
 	# STEP 4: Convolve the spectrum by the spectral resolution for each time index
 	for i in range(len(t)):
-		y[i,:] = convolve_spectrum(x,dx,y[i,:],R)
+		y[i,:] = convolve_spectrum(x,dx,y[i,:],tl['R'])
 
 	# STEP 5: Convert photons to electrons via the gain
-	y *= gain
+	y *= tl['gain']
 
 	return y.to(u.electron)
 
@@ -127,14 +111,14 @@ plt.show()
 # Part 3: Get the binned light curves, summed from all telescope units
 def combined_binned_lightcurve(t,x,y_in,y_mod):
 	# STEP 1: Calculate the light curve for each unit, then sum the results
-	y_obs = np.zeros((len(t),len(x),N_units),dtype=float)*u.electron
+	y_obs = np.zeros((len(t),len(x),tl['N_units']),dtype=float)*u.electron
 	bar = tqdm.tqdm
-	for i in bar(range(N_units)):
+	for i in bar(range(tl['N_units'])):
 		y_obs[:,:,i] = expose_single_unit(t,x,y_in)
 	y_sum = np.sum(y_obs,axis=2)
 
 	# STEP 2: Bin down to match the desired binning
-	bin_factor = int(binning/(dx*x.unit))
+	bin_factor = int(ob['binning']/(dx*x.unit))
 	y_binned = np.zeros((len(t),int(len(x)/bin_factor)),dtype=float)
 	y_mod_binned = np.zeros((len(t),int(len(x)/bin_factor)),dtype=float)
 	for i in range(len(t)):
@@ -168,7 +152,7 @@ def retrieve_transmission_spectrum_simple(t,x,y,ymod):
 	sigma_ppm_RpRs2 = sigma_ppm/np.sum(mask,axis=0)**0.5
 
 	# STEP 4: Randomly re-draw RpRs based on this sigma value
-	RpRs = get_atmosphere_model(planet_file,x,R_st)
+	RpRs = get_atmosphere_model(pl['planet_name']+'.planet',x,st['R_st'])
 	dRpRs = (sigma_ppm_RpRs2/1e6)/(2*RpRs**0.5)
 	RpRs = np.random.normal(RpRs,scale=dRpRs)
 	
@@ -177,10 +161,17 @@ def retrieve_transmission_spectrum_simple(t,x,y,ymod):
 RpRs,dRpRs = retrieve_transmission_spectrum_simple(t,xb,yb,ymb)
 
 # Plot the transmission spectrum
-RpRs_fine = get_atmosphere_model(planet_file,x,R_st)
-
+plt.rcParams['font.size']=28.
+RpRs_fine = get_atmosphere_model(pl['planet_name']+'.planet',x,st['R_st'])
 plt.errorbar(xb.value,RpRs,xerr=np.ptp(xb.value)/len(xb)/2,yerr=dRpRs,linestyle='None',marker='s')
 plt.plot(x.value,RpRs_fine,c='green')
+
+# Labels
+plt.xlabel('wavelength (nm)',fontsize=34)
+plt.ylabel('$R_p/R_s$',fontsize=34)
+plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+plt.title('{0} and {1} at {2} pc'.format(pl['planet_name'],st['star_name'],int(st['d'].value)),fontsize=42)
 plt.show()
 
 
